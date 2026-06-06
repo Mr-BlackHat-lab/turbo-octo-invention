@@ -1,7 +1,7 @@
 first focus in campaings
 
-Campaings
-- campaing_id
+Campaigns
+- campaign_id
 - name
 - due_date
 - created_at
