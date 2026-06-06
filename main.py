@@ -60,10 +60,9 @@ async def read_campaing_id(id: int):
 
 
 @app.post("/campaings")
-async def create_campaing(request: Request):
-    body = await request.json()
+async def create_campaing(body: dict[str, Any]):
 
-    new:Any = {
+    new: Any = {
         "campaing_id": randint(100, 1000),
         "name": body.get("name"),
         "due_date": body.get("due_date"),
