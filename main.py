@@ -1,7 +1,7 @@
 ﻿from datetime import datetime
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 app = FastAPI(root_path="/api/v1")
 
@@ -31,6 +31,12 @@ data: Any = [
         "created_at": datetime.now(),
     },
     {
+        "campaing_id": 69,
+        "name": "lets get rustty",
+        "due_date": datetime.now(),
+        "created_at": datetime.now(),
+    },
+    {
         "campaing_id": 44,
         "name": "rusty",
         "due_date": datetime.now(),
@@ -46,4 +52,7 @@ async def read_campaings():
 
 @app.get("/campaings/{id}")
 async def read_campaing_id(id: int):
-    return {"campaings": id}
+    for campaing in data:
+        if campaing.get("campaing_id") == id:
+            return {"campaings": campaing}
+    raise HTTPException(status_code=404)
