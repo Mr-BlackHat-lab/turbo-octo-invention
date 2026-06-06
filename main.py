@@ -1,7 +1,8 @@
 ﻿from datetime import datetime
+from random import randint
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 
 app = FastAPI(root_path="/api/v1")
 
@@ -56,3 +57,18 @@ async def read_campaing_id(id: int):
         if campaing.get("campaing_id") == id:
             return {"campaings": campaing}
     raise HTTPException(status_code=404)
+
+
+@app.post("/campaings")
+async def create_campaing(request: Request):
+    body = await request.json()
+
+    new:Any = {
+        "campaing_id": randint(100, 1000),
+        "name": body.get("name"),
+        "due_date": body.get("due_date"),
+        "created_at": datetime.now(),
+    }
+
+    data.append(new)
+    return {"campaing": new}
