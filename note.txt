@@ -1,0 +1,15 @@
+first focus in campaings
+
+Campaings
+- campaing_id
+- name
+- due_date
+- created_at
+
+pieces
+- piece_id
+- campaing_id
+- name
+- content
+- content_type
+- created_at
