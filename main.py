@@ -1,9 +1,12 @@
 ﻿from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from random import randint
-from typing import Annotated, Any
+from typing import Annotated, Any, Generic, List, TypeVar
+from annotated_types import T
+from typing_extensions import Type
 
-from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 
@@ -91,14 +94,19 @@ data: Any = [
     },
 ]
 
+T = TypeVar("T")
+
+class Response(BaseModel, Generic[T]):
+    data: T
+
 
 # @app.get("/campaigns")
 # async def read_campaigns():
 #     return {"campaigns": data}
-@app.get("/campaigns")
+@app.get("/campaigns", response_model=Response[list[Campaign]])
 async def read_campaigns(session: SessionDep):
     data = session.exec(select(Campaign)).all()
-    return{"campaigns": data}
+    return {"data": data}
 
 
 # @app.get("/campaigns/{id}")
@@ -107,13 +115,12 @@ async def read_campaigns(session: SessionDep):
 #         if campaign.get("campaign_id") == id:
 #             return {"campaigns": campaign}
 #     raise HTTPException(status_code=404)
-@app.get("/campaigns/{id}")
-async def read_campaign_id(id: int, session:SessionDep):
-    data = session.exec(select(Campaign)).all()
-    for camp in data:
-        if camp.campaign_id == id:
-            return {"campaigns":camp}
-    raise HTTPException(status_code=404)
+@app.get("/campaigns/{id}", response_model=Response[Campaign])
+async def read_campaign(id: int, session: SessionDep):
+    data = session.get(Campaign, id)
+    if not data:
+        raise HTTPException(status_code=404)
+    return {"data": data}
 
 # @app.post("/campaigns", status_code=201)
 # async def create_campaign(body: dict[str, Any]):
