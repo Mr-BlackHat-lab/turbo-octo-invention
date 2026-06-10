@@ -107,7 +107,13 @@ async def read_campaigns(session: SessionDep):
 #         if campaign.get("campaign_id") == id:
 #             return {"campaigns": campaign}
 #     raise HTTPException(status_code=404)
-
+@app.get("/campaigns/{id}")
+async def read_campaign_id(id: int, session:SessionDep):
+    data = session.exec(select(Campaign)).all()
+    for camp in data:
+        if camp.campaign_id == id:
+            return {"campaigns":camp}
+    raise HTTPException(status_code=404)
 
 # @app.post("/campaigns", status_code=201)
 # async def create_campaign(body: dict[str, Any]):
