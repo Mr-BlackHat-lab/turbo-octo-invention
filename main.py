@@ -134,7 +134,13 @@ async def read_campaign(id: int, session: SessionDep):
 
 #     data.append(new)
 #     return {"campaign": new}
-
+@app.post("/campaigns", status_code=201, response_model=Response[Campaign])
+async def create_campaign(campaign: Campaign, session: SessionDep):
+    db_campaign = Campaign.model_validate(campaign)
+    session.add(db_campaign)
+    session.commit()
+    session.refresh(db_campaign)
+    return {"data": db_campaign}
 
 # @app.put("/campaigns/{id}")
 # async def update_campaign(id: int, body: dict[str, Any]):
