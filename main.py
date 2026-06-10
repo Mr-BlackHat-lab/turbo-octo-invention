@@ -1,5 +1,5 @@
 ﻿from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from random import randint
 from typing import Annotated, Any
 
@@ -11,7 +11,9 @@ class Campaign(SQLModel, table=True):
     campaign_id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     due_date: datetime | None = Field(default=None, index=True)
-    created_at: str | None = Field(default=datetime.now(), index=True)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), nullable=True, index=True
+    )
 
 
 sqlite_file_name = "database.db"
@@ -36,8 +38,15 @@ SessionDep = Annotated[Session, Depends(get_session)]
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
-    # with Session(engine) as session:
-    # if not session.exec(select())
+    with Session(engine) as session:
+        if not session.exec(select(Campaign)).first():
+            session.add_all([
+                Campaign(name="somthing", due_date=datetime.now()),
+                Campaign(name="free 415 v points", due_date=datetime.now()),
+                Campaign(name="something is goning on", due_date=datetime.now()),
+            ])
+            session.commit()
+
     yield
 
 
