@@ -1,6 +1,5 @@
 ﻿from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from random import randint
 from typing import Annotated, Any, Generic, List, TypeVar
 from annotated_types import T
 from typing_extensions import Type
@@ -17,7 +16,9 @@ class Campaign(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=True, index=True
     )
-
+class CampaignCreate(SQLModel):
+    name:str
+    due_date: datetime | None = None
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
@@ -135,12 +136,13 @@ async def read_campaign(id: int, session: SessionDep):
 #     data.append(new)
 #     return {"campaign": new}
 @app.post("/campaigns", status_code=201, response_model=Response[Campaign])
-async def create_campaign(campaign: Campaign, session: SessionDep):
+async def create_campaign(campaign: CampaignCreate, session: SessionDep):
     db_campaign = Campaign.model_validate(campaign)
     session.add(db_campaign)
     session.commit()
     session.refresh(db_campaign)
     return {"data": db_campaign}
+
 
 # @app.put("/campaigns/{id}")
 # async def update_campaign(id: int, body: dict[str, Any]):
@@ -155,6 +157,17 @@ async def create_campaign(campaign: Campaign, session: SessionDep):
 #             data[index] = updated
 #             return {"campaign": updated}
 #     raise HTTPException(status_code=404)
+@app.put("/campaigns/{id}",response_model=Response[Campaign])
+async def update_campaign(campaign_id: int, campaign:CampaignCreate, session:SessionDep):
+    data = session.get(Campaign,campaign_id)
+    if not data:
+        raise HTTPException(status_code=404)
+    data.name = campaign.name
+    data.due_date = campaign.due_date
+    session.add(data)
+    session.commit()
+    session.refresh(data)
+    return {"data":data}
 
 
 # @app.delete("/campaigns/{id}")
@@ -164,3 +177,10 @@ async def create_campaign(campaign: Campaign, session: SessionDep):
 #             data.pop(index)
 #             return Response(status_code=204)
 #     raise HTTPException(status_code=404)
+@app.delete("/campaigns/{id}", status_code=204)
+async def delete_campaigns(campaign_id: int, session:SessionDep):
+    data = session.get(Campaign,campaign_id)
+    if not data:
+        raise HTTPException(status_code=404)
+    session.delete(data)
+    session.commit()
