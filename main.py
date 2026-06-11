@@ -62,38 +62,38 @@ async def root():
     return {"message": "Hello World"}
 
 
-data: Any = [
-    {
-        "campaign_id": 1,
-        "name": "semester breaks",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
-    },
-    {
-        "campaign_id": 2,
-        "name": "coffe breaks",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
-    },
-    {
-        "campaign_id": 3,
-        "name": "enjoy",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
-    },
-    {
-        "campaign_id": 69,
-        "name": "lets get rustty",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
-    },
-    {
-        "campaign_id": 44,
-        "name": "rusty",
-        "due_date": datetime.now(),
-        "created_at": datetime.now(),
-    },
-]
+# data: Any = [
+#     {
+#         "campaign_id": 1,
+#         "name": "semester breaks",
+#         "due_date": datetime.now(),
+#         "created_at": datetime.now(),
+#     },
+#     {
+#         "campaign_id": 2,
+#         "name": "coffe breaks",
+#         "due_date": datetime.now(),
+#         "created_at": datetime.now(),
+#     },
+#     {
+#         "campaign_id": 3,
+#         "name": "enjoy",
+#         "due_date": datetime.now(),
+#         "created_at": datetime.now(),
+#     },
+#     {
+#         "campaign_id": 69,
+#         "name": "lets get rustty",
+#         "due_date": datetime.now(),
+#         "created_at": datetime.now(),
+#     },
+#     {
+#         "campaign_id": 44,
+#         "name": "rusty",
+#         "due_date": datetime.now(),
+#         "created_at": datetime.now(),
+#     },
+# ]
 
 T = TypeVar("T")
 
