@@ -1,12 +1,12 @@
 ﻿from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Annotated, Any, Generic, List, TypeVar
+from typing import Annotated, Any, Generic, List, Optional, TypeVar
 from annotated_types import T
 from typing_extensions import Type
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, func, select
 
 
 class Campaign(SQLModel, table=True):
@@ -30,14 +30,11 @@ engine = create_engine(sqlite_url, connect_args=connect_args)
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
-
 def get_session():
     with Session(engine) as session:
         yield session
 
-
 SessionDep = Annotated[Session, Depends(get_session)]
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,61 +58,42 @@ app = FastAPI(root_path="/api/v1", lifespan=lifespan)
 async def root():
     return {"message": "Hello World"}
 
-
-# data: Any = [
-#     {
-#         "campaign_id": 1,
-#         "name": "semester breaks",
-#         "due_date": datetime.now(),
-#         "created_at": datetime.now(),
-#     },
-#     {
-#         "campaign_id": 2,
-#         "name": "coffe breaks",
-#         "due_date": datetime.now(),
-#         "created_at": datetime.now(),
-#     },
-#     {
-#         "campaign_id": 3,
-#         "name": "enjoy",
-#         "due_date": datetime.now(),
-#         "created_at": datetime.now(),
-#     },
-#     {
-#         "campaign_id": 69,
-#         "name": "lets get rustty",
-#         "due_date": datetime.now(),
-#         "created_at": datetime.now(),
-#     },
-#     {
-#         "campaign_id": 44,
-#         "name": "rusty",
-#         "due_date": datetime.now(),
-#         "created_at": datetime.now(),
-#     },
-# ]
-
 T = TypeVar("T")
 
 class Response(BaseModel, Generic[T]):
     data: T
+class PaginatedResponse(BaseModel, Generic[T]):
+    data:T
+    next: Optional[str]
+    prev: Optional[str]
+    count: int
 
 
-# @app.get("/campaigns")
-# async def read_campaigns():
-#     return {"campaigns": data}
-@app.get("/campaigns", response_model=Response[list[Campaign]])
-async def read_campaigns(session: SessionDep):
-    data = session.exec(select(Campaign)).all()
-    return {"data": data}
+@app.get("/campaigns", response_model=PaginatedResponse[list[Campaign]])
+async def read_campaigns(request:Request, session: SessionDep, page: int = Query(1, ge=1), page_size: int = Query(5, ge=1)):
+    limitt = page_size
+    offset = (page-1)*limitt
+    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limitt)).all() #type: ignore
+    base_url = str(request.url).split('?')[0]
+    total = session.exec(select(func.count()).select_from(Campaign)).one()
+    if offset+limitt < total:
+        next_url = f"{base_url}?page={page+1}&page_size={page_size}"
+    else:
+        next_url = None
+    if page>1:
+        prev_url = f"{base_url}?page={page-1}&page_size={page_size}"
+    else:
+        prev_url = None
+    print(base_url)
+    return {
+        "count":total,
+        "next":next_url,
+        "prev":prev_url,
+        "data": data
+    }
 
 
-# @app.get("/campaigns/{id}")
-# async def read_campaign_id(id: int):
-#     for campaign in data:
-#         if campaign.get("campaign_id") == id:
-#             return {"campaigns": campaign}
-#     raise HTTPException(status_code=404)
+
 @app.get("/campaigns/{id}", response_model=Response[Campaign])
 async def read_campaign(id: int, session: SessionDep):
     data = session.get(Campaign, id)
@@ -123,18 +101,6 @@ async def read_campaign(id: int, session: SessionDep):
         raise HTTPException(status_code=404)
     return {"data": data}
 
-# @app.post("/campaigns", status_code=201)
-# async def create_campaign(body: dict[str, Any]):
-
-#     new: Any = {
-#         "campaign_id": randint(100, 1000),
-#         "name": body.get("name"),
-#         "due_date": body.get("due_date"),
-#         "created_at": datetime.now(),
-#     }
-
-#     data.append(new)
-#     return {"campaign": new}
 @app.post("/campaigns", status_code=201, response_model=Response[Campaign])
 async def create_campaign(campaign: CampaignCreate, session: SessionDep):
     db_campaign = Campaign.model_validate(campaign)
@@ -144,19 +110,6 @@ async def create_campaign(campaign: CampaignCreate, session: SessionDep):
     return {"data": db_campaign}
 
 
-# @app.put("/campaigns/{id}")
-# async def update_campaign(id: int, body: dict[str, Any]):
-#     for index, campaign in enumerate(data):
-#         if campaign.get("campaign_id") == id:
-#             updated: Any = {
-#                 "campaign_id": id,
-#                 "name": body.get("name"),
-#                 "due_date": body.get("due_date"),
-#                 "created_at": campaign.get("created_at"),
-#             }
-#             data[index] = updated
-#             return {"campaign": updated}
-#     raise HTTPException(status_code=404)
 @app.put("/campaigns/{id}",response_model=Response[Campaign])
 async def update_campaign(campaign_id: int, campaign:CampaignCreate, session:SessionDep):
     data = session.get(Campaign,campaign_id)
@@ -170,13 +123,6 @@ async def update_campaign(campaign_id: int, campaign:CampaignCreate, session:Ses
     return {"data":data}
 
 
-# @app.delete("/campaigns/{id}")
-# async def delet_campaign(id: int):
-#     for index, campaign in enumerate(data):
-#         if campaign.get("campaign_id") == id:
-#             data.pop(index)
-#             return Response(status_code=204)
-#     raise HTTPException(status_code=404)
 @app.delete("/campaigns/{id}", status_code=204)
 async def delete_campaigns(campaign_id: int, session:SessionDep):
     data = session.get(Campaign,campaign_id)
