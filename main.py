@@ -70,21 +70,22 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 
 @app.get("/campaigns", response_model=PaginatedResponse[list[Campaign]])
-async def read_campaigns(request:Request, session: SessionDep, page: int = Query(1, ge=1), page_size: int = Query(5, ge=1)):
-    limitt = page_size
-    offset = (page-1)*limitt
-    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limitt)).all() #type: ignore
+async def read_campaigns(request:Request, session: SessionDep, offset: int = Query(0, ge=0), limit: int = Query(5, ge=1)):
+
+    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limit)).all() #type: ignore
+
     base_url = str(request.url).split('?')[0]
+
     total = session.exec(select(func.count()).select_from(Campaign)).one()
-    if offset+limitt < total:
-        next_url = f"{base_url}?page={page+1}&page_size={page_size}"
-    else:
-        next_url = None
-    if page>1:
-        prev_url = f"{base_url}?page={page-1}&page_size={page_size}"
+
+    next_url = f"{base_url}?offset={offset+limit}&limit={limit}"
+
+    if offset>0:
+        prev_url = f"{base_url}?offset={max(0, offset-1)}&limit={limit}"
     else:
         prev_url = None
     print(base_url)
+
     return {
         "count":total,
         "next":next_url,
