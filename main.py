@@ -4,6 +4,8 @@ from typing import Annotated, Any, Generic, List, Optional, TypeVar
 from annotated_types import T
 from typing_extensions import Type
 
+import base64
+import json
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlmodel import Field, Session, SQLModel, create_engine, func, select
@@ -67,18 +69,35 @@ class PaginatedResponse(BaseModel, Generic[T]):
     next: Optional[str]
     # count: int
 
+def encode_cursor(value:int)->str:
+    raw = json.dumps({"id":value})
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+def decoder_cursor(cursor:str)->int:
+    raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+    payload = json.loads(raw)
+    return payload["id"]
 
 @app.get("/campaigns", response_model=PaginatedResponse[list[Campaign]])
-async def read_campaigns(request:Request, session: SessionDep, cursor: int = Query(0, ge=0), limit: int = Query(5, ge=1)):
+async def read_campaigns(request:Request, session: SessionDep, cursor: Optional[str] = Query(None), limit: int = Query(5, ge=1)):
+    cursor_id = 0
+
+    if cursor:
+        cursor_id = decoder_cursor(cursor)
 
     # data = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limit)).all() #type: ignore
     # base_url = str(request.url).split('?')[0]
     # total = session.exec(select(func.count()).select_from(Campaign)).one()
     # next_url = f"{base_url}?offset={offset+limit}&limit={limit}"
 
-    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).where(Campaign.campaign_id > cursor).limit(limit)).all() #type: ignore
+    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).where(Campaign.campaign_id > cursor_id).limit(limit+1)).all() #type: ignore
+
     base_url = str(request.url).split('?')[0]
-    next_url = f"{base_url}?cursor={data[-1].campaign_id}&limit={limit}"
+    if len(data) > limit:
+        next_cursor = encode_cursor(data[-1].campaign_id)
+        next_url = f"{base_url}?cursor={next_cursor}&limit={limit}"
+    else:
+        next_url = None
     return {
         # "count":total,
         "next":next_url,
