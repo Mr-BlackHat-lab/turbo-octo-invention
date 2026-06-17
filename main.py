@@ -10,7 +10,7 @@ from sqlmodel import Field, Session, SQLModel, create_engine, func, select
 
 
 class Campaign(SQLModel, table=True):
-    campaign_id: int | None = Field(default=None, primary_key=True)
+    campaign_id: int = Field(default=None, primary_key=True)
     name: str = Field(index=True)
     due_date: datetime | None = Field(default=None, index=True)
     created_at: datetime = Field(
@@ -65,31 +65,23 @@ class Response(BaseModel, Generic[T]):
 class PaginatedResponse(BaseModel, Generic[T]):
     data:T
     next: Optional[str]
-    prev: Optional[str]
-    count: int
+    # count: int
 
 
 @app.get("/campaigns", response_model=PaginatedResponse[list[Campaign]])
-async def read_campaigns(request:Request, session: SessionDep, offset: int = Query(0, ge=0), limit: int = Query(5, ge=1)):
+async def read_campaigns(request:Request, session: SessionDep, cursor: int = Query(0, ge=0), limit: int = Query(5, ge=1)):
 
-    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limit)).all() #type: ignore
+    # data = session.exec(select(Campaign).order_by(Campaign.campaign_id).offset(offset).limit(limit)).all() #type: ignore
+    # base_url = str(request.url).split('?')[0]
+    # total = session.exec(select(func.count()).select_from(Campaign)).one()
+    # next_url = f"{base_url}?offset={offset+limit}&limit={limit}"
 
+    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).where(Campaign.campaign_id > cursor).limit(limit)) #type: ignore
     base_url = str(request.url).split('?')[0]
-
-    total = session.exec(select(func.count()).select_from(Campaign)).one()
-
-    next_url = f"{base_url}?offset={offset+limit}&limit={limit}"
-
-    if offset>0:
-        prev_url = f"{base_url}?offset={max(0, offset-1)}&limit={limit}"
-    else:
-        prev_url = None
-    print(base_url)
-
+    next_url = f"{base_url}?cursor={cursor}&limit={limit}"
     return {
-        "count":total,
+        # "count":total,
         "next":next_url,
-        "prev":prev_url,
         "data": data
     }
 
