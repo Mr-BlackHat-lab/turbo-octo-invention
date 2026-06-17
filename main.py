@@ -76,9 +76,9 @@ async def read_campaigns(request:Request, session: SessionDep, cursor: int = Que
     # total = session.exec(select(func.count()).select_from(Campaign)).one()
     # next_url = f"{base_url}?offset={offset+limit}&limit={limit}"
 
-    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).where(Campaign.campaign_id > cursor).limit(limit)) #type: ignore
+    data = session.exec(select(Campaign).order_by(Campaign.campaign_id).where(Campaign.campaign_id > cursor).limit(limit)).all() #type: ignore
     base_url = str(request.url).split('?')[0]
-    next_url = f"{base_url}?cursor={cursor}&limit={limit}"
+    next_url = f"{base_url}?cursor={data[-1].campaign_id}&limit={limit}"
     return {
         # "count":total,
         "next":next_url,
